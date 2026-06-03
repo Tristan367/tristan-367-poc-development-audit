@@ -4,35 +4,40 @@ const YAML = require("js-yaml");
 const asExpressRoute = require("./asExpressRoute");
 
 /**
- * Dig through a directory to find all route configs.
+ * Dig through a directory to find all route configs (recursively searches nested folders).
  */
 module.exports = function findRoutes(directory) {
   directory = path.resolve(directory);
 
   const routes = [];
 
-  for (const file of fs.readdirSync(directory)) {
-    const filePath = path.join(directory, file);
-    const stats = fs.statSync(filePath);
+  function searchDirectory(dir) {
+    for (const file of fs.readdirSync(dir)) {
+      const filePath = path.join(dir, file);
+      const stats = fs.statSync(filePath);
 
-    if (stats.isDirectory()) {
-      const name = file;
-      const entrypoint = path.join(filePath, "index.js");
+      if (stats.isDirectory()) {
+        const entrypoint = path.join(filePath, "index.js");
+        const configPath = path.join(filePath, "route.yaml");
 
-      let configPath = path.join(filePath, "route.yaml");
+        if (fs.existsSync(configPath)) {
+          const config = YAML.load(fs.readFileSync(configPath));
 
-      if (fs.existsSync(configPath)) {
-        const config = YAML.load(fs.readFileSync(configPath));
-
-        routes.push({
-          name,
-          entrypoint,
-          method: config.method.trim().toUpperCase(),
-          route: asExpressRoute(config.route),
-        });
+          routes.push({
+            name: file,
+            entrypoint,
+            method: config.method.trim().toUpperCase(),
+            route: asExpressRoute(config.route),
+          });
+        } else {
+          // No route.yaml in this folder, search subdirectories
+          searchDirectory(filePath);
+        }
       }
     }
   }
+
+  searchDirectory(directory);
 
   routes.sort((a, b) => {
     if (a.route < b.route) {

@@ -19,6 +19,9 @@ mongoose
 const app = express();
 const PORT = process.env.PORT || 3750;
 
+// Middleware
+app.use(express.json());
+
 //Routes
 const findRoutes = require("./helpers/findRoutes");
 const mountRoute = require("./helpers/mountRoute");
